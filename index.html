@@ -11,10 +11,12 @@
     <header class="hero">
       <div class="hero-copy">
         <p class="eyebrow">Dental QA Review</p>
-        <h1>50-sample treatment advice review set</h1>
+        <h1>50-sample dataset review set</h1>
         <p class="hero-text">
-          Review the image and QA pair, then enter a clinician-written treatment suggestion.
-          All inputs are saved locally in the browser and can be exported as CSV at any time.
+          This page is for dataset quality review. Please check whether the image, question,
+          and current answer match well. If you have any comments, corrections, or treatment
+          suggestions, you can write them in the Task 2 text box. All inputs are saved locally
+          in the browser and can be exported as CSV at any time.
         </p>
       </div>
       <div class="hero-actions">
@@ -40,14 +42,6 @@
       </div>
     </section>
 
-    <section class="jump-bar">
-      <div class="jump-copy">
-        <span class="status-label">Quick Jump</span>
-        <span class="jump-text">Drag to sample <span id="jumpValue">1</span></span>
-      </div>
-      <input id="sampleSlider" class="sample-slider" type="range" min="1" max="50" value="1">
-    </section>
-
     <main class="workspace">
       <section class="panel image-panel">
         <div class="panel-head">
@@ -60,7 +54,6 @@
         <div class="meta-row">
           <span class="meta-chip" id="datasetChip">Dataset</span>
           <span class="meta-chip" id="categoryChip">Category</span>
-          <span class="meta-chip" id="draftChip">Draft status</span>
         </div>
       </section>
 
@@ -89,48 +82,48 @@
           <div id="ratingButtons" class="rating-buttons">
             <button class="rating-btn" type="button" data-score="1">
               <span class="rating-num">1</span>
-              <span class="rating-label">Completely Irrelevant</span>
+              <span class="rating-label">Irrelevant</span>
             </button>
             <button class="rating-btn" type="button" data-score="2">
               <span class="rating-num">2</span>
-              <span class="rating-label">Almost Irrelevant</span>
+              <span class="rating-label">Very Low</span>
             </button>
             <button class="rating-btn" type="button" data-score="3">
               <span class="rating-num">3</span>
-              <span class="rating-label">Slightly Relevant</span>
+              <span class="rating-label">Slight</span>
             </button>
             <button class="rating-btn" type="button" data-score="4">
               <span class="rating-num">4</span>
-              <span class="rating-label">Moderately Relevant</span>
+              <span class="rating-label">Moderate</span>
             </button>
             <button class="rating-btn" type="button" data-score="5">
               <span class="rating-num">5</span>
-              <span class="rating-label">Highly Relevant</span>
+              <span class="rating-label">Good</span>
             </button>
             <button class="rating-btn" type="button" data-score="6">
               <span class="rating-num">6</span>
-              <span class="rating-label">Extremely Relevant</span>
+              <span class="rating-label">Strong</span>
             </button>
             <button class="rating-btn" type="button" data-score="7">
               <span class="rating-num">7</span>
-              <span class="rating-label">Completely Consistent</span>
+              <span class="rating-label">Perfect</span>
             </button>
           </div>
         </section>
       </section>
 
-      <section class="panel note-panel">
+      <section class="panel note-panel note-panel-wide">
         <div class="task-kicker">Task 2</div>
         <div class="panel-head">
           <h2>Doctor Treatment Advice</h2>
-          <span id="saveState" class="save-state">Not saved yet</span>
+          <span id="saveState" class="save-state">Optional</span>
         </div>
         <label class="note-label" for="doctorAdvice">
-          Write a clearer treatment suggestion or follow-up recommendation for this case.
+          This field is optional. If the doctor wants to add a clearer treatment suggestion or follow-up recommendation, please write it here.
         </label>
         <textarea
           id="doctorAdvice"
-          placeholder="Example: Recommend targeted clinical correlation, review of peri-implant bone support, and localized imaging if symptoms or stability are unclear."
+          placeholder="Optional: add a clearer treatment suggestion or follow-up recommendation for this case."
         ></textarea>
         <div class="note-footer">
           <span id="charCount">0 characters</span>
@@ -144,9 +137,13 @@
 
     <section class="sample-strip sample-strip-compact">
       <div class="strip-head strip-head-compact">
-        <p>Green means both the score and the doctor advice have been completed.</p>
+        <p>Yellow means the QA pair has been scored but the optional advice is still empty. Green means optional advice has been added. Unscored samples stay neutral.</p>
       </div>
       <div id="caseProgressContainer" class="case-progress-container"></div>
+      <div class="navigator-slider-row">
+        <span class="navigator-slider-label">Slide to browse more sample numbers</span>
+        <input id="navigatorSlider" class="navigator-slider" type="range" min="0" max="1000" value="0">
+      </div>
     </section>
   </div>
 

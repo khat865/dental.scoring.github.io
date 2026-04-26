@@ -15,14 +15,12 @@ const elements = {
   completedCount: document.getElementById("completedCount"),
   completedTotal: document.getElementById("completedTotal"),
   progressFill: document.getElementById("progressFill"),
-  sampleSlider: document.getElementById("sampleSlider"),
-  jumpValue: document.getElementById("jumpValue"),
+  navigatorSlider: document.getElementById("navigatorSlider"),
   caseImage: document.getElementById("caseImage"),
   questionText: document.getElementById("questionText"),
   answerText: document.getElementById("answerText"),
   datasetChip: document.getElementById("datasetChip"),
   categoryChip: document.getElementById("categoryChip"),
-  draftChip: document.getElementById("draftChip"),
   caseId: document.getElementById("caseId"),
   scoreState: document.getElementById("scoreState"),
   ratingButtons: Array.from(document.querySelectorAll("#ratingButtons .rating-btn")),
@@ -79,8 +77,12 @@ function entryRating(entry) {
   return state.ratings[getCaseId(entry)] || { score: "", updated_at: "" };
 }
 
+function hasOptionalAdvice(entry) {
+  return Boolean(entryNote(entry).advice.trim());
+}
+
 function isCaseCompleted(entry) {
-  return Boolean(entryNote(entry).advice.trim() && entryRating(entry).score);
+  return Boolean(entryRating(entry).score);
 }
 
 function updateCounts() {
@@ -108,6 +110,9 @@ function updateNavigator() {
     if (isCaseCompleted(entry)) {
       button.classList.add("rated");
     }
+    if (hasOptionalAdvice(entry)) {
+      button.classList.add("annotated");
+    }
 
     button.addEventListener("click", () => {
       saveCurrentDraft();
@@ -121,6 +126,7 @@ function updateNavigator() {
   if (activeItem) {
     window.setTimeout(() => {
       activeItem.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      syncNavigatorSlider();
     }, 50);
   }
 }
@@ -132,25 +138,21 @@ function render() {
   }
 
   elements.currentIndex.textContent = entry.sample_index;
-  elements.sampleSlider.max = String(state.dataset.entries.length);
-  elements.sampleSlider.value = String(entry.sample_index);
-  elements.jumpValue.textContent = entry.sample_index;
   elements.caseImage.src = entry.image;
   elements.caseImage.alt = `Sample ${entry.sample_index}`;
   elements.questionText.textContent = entry.question;
   elements.answerText.textContent = entry.answer;
   elements.datasetChip.textContent = `Dataset ${entry.source_dataset}`;
   elements.categoryChip.textContent = entry.condition_category.replaceAll("_", " ");
-  elements.draftChip.textContent = entry.redrafted ? "Redrafted answer" : "Original answer";
   elements.caseId.textContent = entry.id;
 
   const note = entryNote(entry);
   const rating = entryRating(entry);
   elements.doctorAdvice.value = note.advice;
   elements.charCount.textContent = `${note.advice.length} characters`;
-  elements.saveState.textContent = note.updated_at
+  elements.saveState.textContent = note.updated_at && note.advice.trim()
     ? `Saved ${new Date(note.updated_at).toLocaleString()}`
-    : "Not saved yet";
+    : "Optional";
   elements.scoreState.textContent = rating.score
     ? `Scored ${rating.score}/7`
     : "Not scored yet";
@@ -198,7 +200,9 @@ function saveCurrentDraft() {
   };
   persistNotes();
   elements.charCount.textContent = `${advice.length} characters`;
-  elements.saveState.textContent = `Saved ${new Date().toLocaleString()}`;
+  elements.saveState.textContent = advice.trim()
+    ? `Saved ${new Date().toLocaleString()}`
+    : "Optional";
   updateCounts();
   updateNavigator();
 }
@@ -211,16 +215,6 @@ function scheduleSave() {
 function clearCurrentNote() {
   elements.doctorAdvice.value = "";
   saveCurrentDraft();
-}
-
-function jumpToSample(sampleIndex) {
-  const targetIndex = Number(sampleIndex) - 1;
-  if (Number.isNaN(targetIndex) || targetIndex < 0 || targetIndex >= state.dataset.entries.length) {
-    return;
-  }
-  saveCurrentDraft();
-  state.currentIndex = targetIndex;
-  render();
 }
 
 function navigate(direction) {
@@ -303,6 +297,34 @@ function openImageInNewTab() {
   window.open(entry.image, "_blank", "noopener,noreferrer");
 }
 
+function syncNavigatorSlider() {
+  const container = elements.caseProgressContainer;
+  const slider = elements.navigatorSlider;
+  if (!container || !slider) {
+    return;
+  }
+  const maxScroll = Math.max(0, container.scrollWidth - container.clientWidth);
+  if (maxScroll === 0) {
+    slider.value = "0";
+    slider.disabled = true;
+    return;
+  }
+  slider.disabled = false;
+  const ratio = container.scrollLeft / maxScroll;
+  slider.value = String(Math.round(ratio * 1000));
+}
+
+function scrollNavigatorBySlider() {
+  const container = elements.caseProgressContainer;
+  const slider = elements.navigatorSlider;
+  if (!container || !slider) {
+    return;
+  }
+  const maxScroll = Math.max(0, container.scrollWidth - container.clientWidth);
+  const ratio = Number(slider.value) / 1000;
+  container.scrollLeft = maxScroll * ratio;
+}
+
 function setupEvents() {
   elements.ratingButtons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -316,13 +338,8 @@ function setupEvents() {
     scheduleSave();
   });
 
-  elements.sampleSlider.addEventListener("input", () => {
-    elements.jumpValue.textContent = elements.sampleSlider.value;
-  });
-
-  elements.sampleSlider.addEventListener("change", () => {
-    jumpToSample(elements.sampleSlider.value);
-  });
+  elements.navigatorSlider.addEventListener("input", scrollNavigatorBySlider);
+  elements.caseProgressContainer.addEventListener("scroll", syncNavigatorSlider);
 
   elements.prevBtn.addEventListener("click", () => navigate(-1));
   elements.nextBtn.addEventListener("click", () => navigate(1));
@@ -331,6 +348,7 @@ function setupEvents() {
   elements.openImageBtn.addEventListener("click", openImageInNewTab);
 
   window.addEventListener("beforeunload", saveCurrentDraft);
+  window.addEventListener("resize", syncNavigatorSlider);
   window.addEventListener("keydown", (event) => {
     if (event.target === elements.doctorAdvice) {
       return;
