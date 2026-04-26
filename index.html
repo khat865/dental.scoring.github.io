@@ -40,6 +40,14 @@
       </div>
     </section>
 
+    <section class="jump-bar">
+      <div class="jump-copy">
+        <span class="status-label">Quick Jump</span>
+        <span class="jump-text">Drag to sample <span id="jumpValue">1</span></span>
+      </div>
+      <input id="sampleSlider" class="sample-slider" type="range" min="1" max="50" value="1">
+    </section>
+
     <main class="workspace">
       <section class="panel image-panel">
         <div class="panel-head">
@@ -57,10 +65,14 @@
       </section>
 
       <section class="panel qa-panel">
-        <div class="panel-head">
-          <h2>QA Pair</h2>
-          <span id="caseId" class="case-id"></span>
+        <div class="task-kicker">Task 1</div>
+        <div class="panel-head panel-head-stack">
+          <div class="panel-title-group">
+            <h2>QA Pair</h2>
+            <span id="caseId" class="case-id"></span>
+          </div>
         </div>
+        <p class="task-copy">Please rate how well the current answer addresses the question for this sample.</p>
         <article class="qa-card">
           <h3>Question</h3>
           <p id="questionText"></p>
@@ -69,9 +81,46 @@
           <h3>Current Answer</h3>
           <p id="answerText"></p>
         </article>
+        <section class="rating-card">
+          <div class="rating-head">
+            <h3>QA Pair Score</h3>
+            <span id="scoreState" class="score-state">Not scored yet</span>
+          </div>
+          <div id="ratingButtons" class="rating-buttons">
+            <button class="rating-btn" type="button" data-score="1">
+              <span class="rating-num">1</span>
+              <span class="rating-label">Completely Irrelevant</span>
+            </button>
+            <button class="rating-btn" type="button" data-score="2">
+              <span class="rating-num">2</span>
+              <span class="rating-label">Almost Irrelevant</span>
+            </button>
+            <button class="rating-btn" type="button" data-score="3">
+              <span class="rating-num">3</span>
+              <span class="rating-label">Slightly Relevant</span>
+            </button>
+            <button class="rating-btn" type="button" data-score="4">
+              <span class="rating-num">4</span>
+              <span class="rating-label">Moderately Relevant</span>
+            </button>
+            <button class="rating-btn" type="button" data-score="5">
+              <span class="rating-num">5</span>
+              <span class="rating-label">Highly Relevant</span>
+            </button>
+            <button class="rating-btn" type="button" data-score="6">
+              <span class="rating-num">6</span>
+              <span class="rating-label">Extremely Relevant</span>
+            </button>
+            <button class="rating-btn" type="button" data-score="7">
+              <span class="rating-num">7</span>
+              <span class="rating-label">Completely Consistent</span>
+            </button>
+          </div>
+        </section>
       </section>
 
       <section class="panel note-panel">
+        <div class="task-kicker">Task 2</div>
         <div class="panel-head">
           <h2>Doctor Treatment Advice</h2>
           <span id="saveState" class="save-state">Not saved yet</span>
@@ -93,12 +142,11 @@
       </section>
     </main>
 
-    <section class="sample-strip">
-      <div class="strip-head">
-        <h2>Sample Navigator</h2>
-        <p>Green means a doctor note has been entered.</p>
+    <section class="sample-strip sample-strip-compact">
+      <div class="strip-head strip-head-compact">
+        <p>Green means both the score and the doctor advice have been completed.</p>
       </div>
-      <div id="sampleList" class="sample-list"></div>
+      <div id="caseProgressContainer" class="case-progress-container"></div>
     </section>
   </div>
 

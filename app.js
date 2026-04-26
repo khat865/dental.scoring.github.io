@@ -1,9 +1,11 @@
 const storageKey = "treatment-advice-review-notes-v1";
+const ratingStorageKey = "treatment-advice-review-scores-v1";
 
 const state = {
   dataset: window.TREATMENT_ADVICE_REVIEW_DATA || { entries: [] },
   currentIndex: 0,
   notes: loadNotes(),
+  ratings: loadRatings(),
   saveTimer: null,
 };
 
@@ -13,6 +15,8 @@ const elements = {
   completedCount: document.getElementById("completedCount"),
   completedTotal: document.getElementById("completedTotal"),
   progressFill: document.getElementById("progressFill"),
+  sampleSlider: document.getElementById("sampleSlider"),
+  jumpValue: document.getElementById("jumpValue"),
   caseImage: document.getElementById("caseImage"),
   questionText: document.getElementById("questionText"),
   answerText: document.getElementById("answerText"),
@@ -20,10 +24,12 @@ const elements = {
   categoryChip: document.getElementById("categoryChip"),
   draftChip: document.getElementById("draftChip"),
   caseId: document.getElementById("caseId"),
+  scoreState: document.getElementById("scoreState"),
+  ratingButtons: Array.from(document.querySelectorAll("#ratingButtons .rating-btn")),
   doctorAdvice: document.getElementById("doctorAdvice"),
   saveState: document.getElementById("saveState"),
   charCount: document.getElementById("charCount"),
-  sampleList: document.getElementById("sampleList"),
+  caseProgressContainer: document.getElementById("caseProgressContainer"),
   prevBtn: document.getElementById("prevBtn"),
   nextBtn: document.getElementById("nextBtn"),
   downloadCsvBtn: document.getElementById("downloadCsvBtn"),
@@ -44,6 +50,19 @@ function persistNotes() {
   localStorage.setItem(storageKey, JSON.stringify(state.notes));
 }
 
+function loadRatings() {
+  try {
+    return JSON.parse(localStorage.getItem(ratingStorageKey) || "{}");
+  } catch (error) {
+    console.warn("Failed to load saved ratings:", error);
+    return {};
+  }
+}
+
+function persistRatings() {
+  localStorage.setItem(ratingStorageKey, JSON.stringify(state.ratings));
+}
+
 function getCaseId(entry) {
   return entry.id;
 }
@@ -56,12 +75,17 @@ function entryNote(entry) {
   return state.notes[getCaseId(entry)] || { advice: "", updated_at: "" };
 }
 
+function entryRating(entry) {
+  return state.ratings[getCaseId(entry)] || { score: "", updated_at: "" };
+}
+
+function isCaseCompleted(entry) {
+  return Boolean(entryNote(entry).advice.trim() && entryRating(entry).score);
+}
+
 function updateCounts() {
   const total = state.dataset.entries.length;
-  const completed = state.dataset.entries.filter((entry) => {
-    const advice = entryNote(entry).advice.trim();
-    return advice.length > 0;
-  }).length;
+  const completed = state.dataset.entries.filter((entry) => isCaseCompleted(entry)).length;
 
   elements.totalCount.textContent = total;
   elements.completedTotal.textContent = total;
@@ -70,18 +94,19 @@ function updateCounts() {
 }
 
 function updateNavigator() {
-  elements.sampleList.innerHTML = "";
+  elements.caseProgressContainer.innerHTML = "";
   state.dataset.entries.forEach((entry, index) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "sample-dot";
+    button.className = "case-progress-item";
     button.textContent = entry.sample_index;
+    button.title = `Sample ${entry.sample_index}`;
 
     if (index === state.currentIndex) {
       button.classList.add("active");
     }
-    if (entryNote(entry).advice.trim()) {
-      button.classList.add("completed");
+    if (isCaseCompleted(entry)) {
+      button.classList.add("rated");
     }
 
     button.addEventListener("click", () => {
@@ -89,8 +114,15 @@ function updateNavigator() {
       state.currentIndex = index;
       render();
     });
-    elements.sampleList.appendChild(button);
+    elements.caseProgressContainer.appendChild(button);
   });
+
+  const activeItem = elements.caseProgressContainer.querySelector(".case-progress-item.active");
+  if (activeItem) {
+    window.setTimeout(() => {
+      activeItem.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }, 50);
+  }
 }
 
 function render() {
@@ -100,6 +132,9 @@ function render() {
   }
 
   elements.currentIndex.textContent = entry.sample_index;
+  elements.sampleSlider.max = String(state.dataset.entries.length);
+  elements.sampleSlider.value = String(entry.sample_index);
+  elements.jumpValue.textContent = entry.sample_index;
   elements.caseImage.src = entry.image;
   elements.caseImage.alt = `Sample ${entry.sample_index}`;
   elements.questionText.textContent = entry.question;
@@ -110,17 +145,44 @@ function render() {
   elements.caseId.textContent = entry.id;
 
   const note = entryNote(entry);
+  const rating = entryRating(entry);
   elements.doctorAdvice.value = note.advice;
   elements.charCount.textContent = `${note.advice.length} characters`;
   elements.saveState.textContent = note.updated_at
     ? `Saved ${new Date(note.updated_at).toLocaleString()}`
     : "Not saved yet";
+  elements.scoreState.textContent = rating.score
+    ? `Scored ${rating.score}/7`
+    : "Not scored yet";
+  updateRatingButtons(rating.score);
 
   elements.prevBtn.disabled = state.currentIndex === 0;
   elements.nextBtn.disabled = state.currentIndex === state.dataset.entries.length - 1;
 
   updateCounts();
   updateNavigator();
+}
+
+function setRating(score) {
+  const entry = currentEntry();
+  if (!entry) {
+    return;
+  }
+  state.ratings[getCaseId(entry)] = {
+    score,
+    updated_at: new Date().toISOString(),
+  };
+  persistRatings();
+  elements.scoreState.textContent = `Scored ${score}/7`;
+  updateRatingButtons(score);
+  updateCounts();
+  updateNavigator();
+}
+
+function updateRatingButtons(selectedScore) {
+  elements.ratingButtons.forEach((button) => {
+    button.classList.toggle("selected", Number(button.dataset.score) === Number(selectedScore));
+  });
 }
 
 function saveCurrentDraft() {
@@ -149,6 +211,16 @@ function scheduleSave() {
 function clearCurrentNote() {
   elements.doctorAdvice.value = "";
   saveCurrentDraft();
+}
+
+function jumpToSample(sampleIndex) {
+  const targetIndex = Number(sampleIndex) - 1;
+  if (Number.isNaN(targetIndex) || targetIndex < 0 || targetIndex >= state.dataset.entries.length) {
+    return;
+  }
+  saveCurrentDraft();
+  state.currentIndex = targetIndex;
+  render();
 }
 
 function navigate(direction) {
@@ -182,6 +254,8 @@ function downloadCsv() {
     "question",
     "current_answer",
     "original_answer",
+    "qa_pair_score",
+    "qa_pair_score_updated_at",
     "doctor_advice",
     "last_updated",
   ];
@@ -189,6 +263,7 @@ function downloadCsv() {
   const lines = [headers.join(",")];
   state.dataset.entries.forEach((entry) => {
     const note = entryNote(entry);
+    const rating = entryRating(entry);
     const row = [
       entry.sample_index,
       entry.id,
@@ -200,6 +275,8 @@ function downloadCsv() {
       entry.question,
       entry.answer,
       entry.original_answer,
+      rating.score,
+      rating.updated_at,
       note.advice,
       note.updated_at,
     ].map(escapeCsv);
@@ -227,10 +304,24 @@ function openImageInNewTab() {
 }
 
 function setupEvents() {
+  elements.ratingButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      setRating(Number(button.dataset.score));
+    });
+  });
+
   elements.doctorAdvice.addEventListener("input", () => {
     elements.charCount.textContent = `${elements.doctorAdvice.value.length} characters`;
     elements.saveState.textContent = "Saving...";
     scheduleSave();
+  });
+
+  elements.sampleSlider.addEventListener("input", () => {
+    elements.jumpValue.textContent = elements.sampleSlider.value;
+  });
+
+  elements.sampleSlider.addEventListener("change", () => {
+    jumpToSample(elements.sampleSlider.value);
   });
 
   elements.prevBtn.addEventListener("click", () => navigate(-1));
